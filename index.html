@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>MonScreener • Nad.fun Terminal</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
+
+  <style>
+    :root{
+      --bg: #050505; --panel: #0e0e10; --panel-hover: #18181b; --border: #27272a;
+      --text-main: #e4e4e7; --text-muted: #71717a;
+      --brand: #836EF9; --accent: #A0055D;
+      --buy: #22c55e; --sell: #ef4444;
+      --font-ui: 'Inter', sans-serif; --font-num: 'JetBrains Mono', monospace;
+    }
+    * { box-sizing: border-box; outline: none; }
+    html, body { height: 100%; margin: 0; background: var(--bg); color: var(--text-main); font-family: var(--font-ui); font-size: 13px; overflow: hidden; }
+    a { color: inherit; text-decoration: none; }
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+
+    .app-layout { display: grid; grid-template-rows: 54px 1fr; height: 100vh; }
+    header { background: rgba(14,14,16,0.9); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 16px; }
+    .logo { width: 32px; height: 32px; border-radius: 8px; background: conic-gradient(from 180deg, var(--brand), var(--accent), var(--brand)); display: grid; place-items: center; font-weight: 800; color: #fff; }
+    .main-grid { display: grid; grid-template-columns: 260px 1fr 340px; height: 100%; overflow: hidden; }
+    
+    .col { border-right: 1px solid var(--border); display: flex; flex-direction: column; background: var(--bg); overflow-y: auto; }
+    .col:last-child { border-right: none; background: var(--panel); }
+    .sec-head { padding: 12px; border-bottom: 1px solid var(--border); font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center; background: var(--panel); }
+    .form-grp { padding: 12px; border-bottom: 1px solid var(--border); }
+    
+    .grid-head, .grid-row { display: grid; grid-template-columns: 30px minmax(140px, 1.8fr) 100px 70px 70px 80px 80px 60px; padding: 10px 12px; border-bottom: 1px solid var(--border); align-items: center; }
+    .grid-head { background: var(--panel); color: var(--text-muted); font-size: 10px; font-weight: 600; text-transform: uppercase; }
+    .grid-row { cursor: pointer; transition: background 0.1s; border-left: 2px solid transparent; }
+    .grid-row:hover { background: var(--panel-hover); }
+    .grid-row.active { background: rgba(131, 110, 249, 0.08); border-left: 2px solid var(--brand); }
+    .grid-row.nad-native { background: rgba(160, 5, 93, 0.08); border-left: 2px solid var(--accent); }
+
+    .num { font-family: var(--font-num); font-size: 12px; }
+    .right { text-align: right; }
+    .green { color: var(--buy); } .red { color: var(--sell); }
+    .tag-nad { font-size: 9px; padding: 2px 4px; background: var(--accent); color: #fff; border-radius: 2px; font-weight: 700; margin-left: 6px; }
+
+    .trade-panel { padding: 16px; border-bottom: 1px solid var(--border); background: var(--bg); }
+    .swap-card { background: #000; border: 1px solid var(--border); border-radius: 8px; padding: 16px; }
+    .swap-field { background: #111; border: 1px solid var(--border); border-radius: 6px; padding: 10px; margin-bottom: 8px; }
+    .swap-input { background: transparent; border: none; color: #fff; font-size: 18px; width: 100%; font-family: var(--font-num); }
+    .action-btn { width: 100%; background: linear-gradient(90deg, var(--brand), var(--accent)); color: #fff; border: none; padding: 14px; margin-top: 10px; border-radius: 6px; font-weight: 700; cursor: pointer; }
+    
+    .connect-btn { background: #e4e4e7; color: #000; border: none; padding: 6px 12px; border-radius: 4px; font-weight: 600; cursor: pointer; }
+    .connect-btn.connected { background: rgba(34, 197, 94, 0.15); color: #4ade80; border: 1px solid #22c55e; }
+
+    @media (max-width: 1000px) { .main-grid { grid-template-columns: 1fr; } .col:first-child, .col:last-child { display: none; } }
+  </style>
+</head>
+<body>
+
+<div class="app-layout">
+  <header>
+    <div style="display:flex; align-items:center; gap:10px">
+      <div class="logo">M</div>
+      <div>
+        <div style="font-weight:700">MonScreener</div>
+        <div style="font-size:10px; color:#777">Nad.fun Factory Reader</div>
+      </div>
+    </div>
+    <button id="walletBtn" class="connect-btn">Connect Wallet</button>
+  </header>
+
+  <div class="main-grid">
+    <aside class="col">
+      <div class="sec-head">Data Sources</div>
+      <div class="form-grp">
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          <div style="display:flex; gap:8px; align-items:center;">
+            <div style="width:8px; height:8px; background:#22c55e; border-radius:50%"></div>
+            <span style="font-size:12px;">DexScreener API</span>
+          </div>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <div style="width:8px; height:8px; background:#444; border-radius:50%" id="rpcStatus"></div>
+            <span style="font-size:12px;">Monad RPC (CORS restricted?)</span>
+          </div>
+        </div>
+      </div>
+      <div class="form-grp">
+        <label style="font-size:11px; color:#777">Tracking Factory</label>
+        <div style="font-family:monospace; font-size:10px; word-break:break-all; color:#aaa; margin-top:4px">
+          0x6B5F564339DbAD6b780249827f2198a841FEB7F3
+        </div>
+      </div>
+      <div class="form-grp">
+        <div style="display:flex; justify-content:space-between; font-size:12px">
+          <span style="color:#777">Found Pairs</span> <span id="stat-count" class="num">0</span>
+        </div>
+      </div>
+    </aside>
+
+    <main class="col">
+      <div class="sec-head">
+        <span>Live Market</span>
+        <button onclick="boot()" style="background:#222; color:#fff; border:1px solid #333; cursor:pointer; padding:2px 8px; border-radius:4px">Refresh</button>
+      </div>
+      
+      <div class="grid-head">
+        <div>#</div>
+        <div>Token / Pair</div>
+        <div class="right">Price</div>
+        <div class="right">5m</div>
+        <div class="right">24h</div>
+        <div class="right">Vol</div>
+        <div class="right">Liq</div>
+        <div class="right">Source</div>
+      </div>
+
+      <div id="pairList" style="overflow-y:auto; flex:1">
+        <div style="padding:40px; text-align:center; color:#444">Scanning Factory Address...</div>
+      </div>
+    </main>
+
+    <aside class="col">
+      <div class="sec-head">Trade (Nad Router)</div>
+      <div class="trade-panel">
+        <div class="swap-card">
+          <div class="swap-field">
+            <div style="display:flex; justify-content:space-between; margin-bottom:4px; font-size:11px; color:#777">
+              <span>Pay</span> <span>Bal: <span id="bal">0.00</span></span>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center">
+              <input id="amtIn" class="swap-input" placeholder="0.0" value="1">
+              <span style="font-weight:700; font-size:12px">MON</span>
+            </div>
+          </div>
+          
+          <div style="text-align:center; margin:-10px 0 6px; color:#555">↓</div>
+
+          <div class="swap-field" style="border:1px solid var(--brand)">
+             <div style="display:flex; justify-content:space-between; margin-bottom:4px; font-size:11px; color:#777">
+              <span>Receive</span>
+            </div>
+             <div style="display:flex; justify-content:space-between; align-items:center">
+              <input id="amtOut" class="swap-input" placeholder="0.0" readonly style="color:var(--brand)">
+              <span id="target" style="font-weight:700; font-size:12px; color:var(--brand)">SELECT</span>
+            </div>
+          </div>
+          
+          <button id="swapBtn" class="action-btn">Connect Wallet</button>
+          <div id="status" style="text-align:center; font-size:10px; margin-top:8px; color:#777"></div>
+        </div>
+      </div>
+       <div class="sec-head">Live Feed</div>
+       <div style="flex:1; background:#000; overflow:hidden">
+          <a class="twitter-timeline" data-theme="dark" data-chrome="noheader nofooter noborders transparent" href="https://twitter.com/monad_xyz?ref_src=twsrc%5Etfw">Loading...</a>
+          <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+       </div>
+    </aside>
+  </div>
+</div>
+
+<script>
+  // CONFIGURATIONS FROM YOUR UPLOADED FILE
+  const NAD_FACTORY = "0x6B5F564339DbAD6b780249827f2198a841FEB7F3"; 
+  const NAD_ROUTER = "0x0B79d71AE99528D1dB24A4148b5f4F865cc2b137";
+  const WMON = "0x3bd359C1119dA7Da1D913D1C4D2B7c461115433A";
+  const RPC_URL = "https://testnet-rpc.monad.xyz";
+
+  // STATE
+  let state = { pairs: [], selected: null, signer: null, account: null };
+
+  const el = id => document.getElementById(id);
+  const fmtMoney = n => n ? '$' + Number(n).toLocaleString(undefined, {maximumFractionDigits: 2, notation: "compact"}) : '-';
+  const fmtPrice = n => n ? '$' + Number(n).toLocaleString(undefined, {maximumFractionDigits: 6}) : '-';
+  const fmtPct = n => n ? (n>=0?'+':'') + Number(n).toFixed(2) + '%' : '-';
+
+  async function boot() {
+    el('pairList').innerHTML = '<div style="padding:40px; text-align:center; color:#666">Querying Factory & API...</div>';
+
+    // 1. QUERY DEXSCREENER BY FACTORY ADDRESS (The most reliable way to find deployed tokens)
+    // We search for the Factory Address directly. DexScreener often indexes pairs by factory.
+    const searchFactory = fetch(`https://api.dexscreener.com/latest/dex/search?q=${NAD_FACTORY}`).then(r=>r.json()).catch(()=>({pairs:[]}));
+    
+    // 2. QUERY DEXSCREENER BY "NAD" (Fallback)
+    const searchNad = fetch(`https://api.dexscreener.com/latest/dex/search?q=nad`).then(r=>r.json()).catch(()=>({pairs:[]}));
+
+    // 3. ATTEMPT RPC (Will fail if local file, but good to try)
+    fetchChainData(); 
+
+    try {
+        const [resFactory, resNad] = await Promise.all([searchFactory, searchNad]);
+        
+        let allPairs = [...(resFactory.pairs || []), ...(resNad.pairs || [])];
+        
+        // Filter & Dedupe
+        const unique = new Map();
+        allPairs.forEach(p => {
+            // Logic: Is it on Monad? OR does it match the factory?
+            const isMonad = (p.chainId && p.chainId.toLowerCase().includes('monad')) || p.url.includes('monad');
+            // If the pair address matches what we found from factory search, it's valid
+            if(isMonad) unique.set(p.pairAddress, p);
+        });
+
+        state.pairs = Array.from(unique.values());
+        
+        // Sort: Volume desc
+        state.pairs.sort((a,b) => (b.volume?.h24||0) - (a.volume?.h24||0));
+        
+        render();
+        el('stat-count').innerText = state.pairs.length;
+
+    } catch(e) {
+        el('pairList').innerHTML = `<div style="padding:20px;text-align:center;color:red">API Error: ${e.message}</div>`;
+    }
+  }
+
+  // Attempt to connect to RPC just to check connectivity
+  async function fetchChainData() {
+    try {
+        const provider = new ethers.JsonRpcProvider(RPC_URL);
+        await provider.getBlockNumber();
+        el('rpcStatus').style.background = '#22c55e'; // Green
+    } catch(e) {
+        el('rpcStatus').style.background = '#ef4444'; // Red (Expected on local file)
+    }
+  }
+
+  function render() {
+    const list = el('pairList');
+    list.innerHTML = '';
+    
+    if(state.pairs.length === 0) {
+        list.innerHTML = '<div style="padding:40px; text-align:center; color:#666">No pairs found via API.<br>Try deploying a token first.</div>';
+        return;
+    }
+
+    state.pairs.forEach((p, i) => {
+        const row = document.createElement('div');
+        // Check if this pair is likely from our Factory
+        const isNad = p.pairAddress.toLowerCase() === NAD_FACTORY.toLowerCase() || p.baseToken.name.toLowerCase().includes('nad');
+        
+        row.className = isNad ? 'grid-row nad-native' : 'grid-row';
+        row.innerHTML = `
+            <div class="num" style="color:#555">${i+1}</div>
+            <div style="display:flex; gap:10px; align-items:center">
+                <img src="${p.info?.imageUrl||''}" style="width:24px;height:24px;border-radius:50%;background:#333" onerror="this.style.display='none'">
+                <div>
+                    <div style="font-weight:700;color:#fff">${p.baseToken.symbol}/${p.quoteToken.symbol} ${isNad?'<span class="tag-nad">NAD</span>':''}</div>
+                    <div style="font-size:10px;color:#555">${p.pairAddress.slice(0,6)}...</div>
+                </div>
+            </div>
+            <div class="right num" style="color:#eee">${fmtPrice(p.priceUsd)}</div>
+            <div class="right num ${p.priceChange?.m5>=0?'green':'red'}">${fmtPct(p.priceChange?.m5)}</div>
+            <div class="right num ${p.priceChange?.h24>=0?'green':'red'}">${fmtPct(p.priceChange?.h24)}</div>
+            <div class="right num">${fmtMoney(p.volume?.h24)}</div>
+            <div class="right num">${fmtMoney(p.liquidity?.usd)}</div>
+            <div class="right num" style="font-size:10px">${isNad?'FACTORY':'DEX'}</div>
+        `;
+        row.onclick = () => select(p, row);
+        list.appendChild(row);
+    });
+  }
+
+  function select(p, div) {
+    document.querySelectorAll('.grid-row').forEach(r => r.classList.remove('active'));
+    div.classList.add('active');
+    state.selected = p;
+    el('target').innerText = p.baseToken.symbol;
+    calc();
+  }
+
+  function calc() {
+    if(!state.selected) return;
+    const v = parseFloat(el('amtIn').value||0);
+    const p = parseFloat(state.selected.priceUsd)||0;
+    // Mock price of 1 MON = $0.50 since testnet price varies
+    if(p>0) el('amtOut').value = ((v * 0.50) / p).toFixed(2);
+  }
+  el('amtIn').oninput = calc;
+
+  // Wallet Logic
+  el('walletBtn').onclick = async () => {
+    if(!window.ethereum) return alert('Install Wallet');
+    const p = new ethers.BrowserProvider(window.ethereum);
+    await p.send("eth_requestAccounts", []);
+    const s = await p.getSigner();
+    state.signer = s;
+    state.account = await s.getAddress();
+    
+    el('walletBtn').innerText = state.account.slice(0,6)+'...';
+    el('walletBtn').classList.add('connected');
+    el('swapBtn').innerText = 'SWAP ON NAD.FUN';
+    
+    const bal = await p.getBalance(state.account);
+    el('bal').innerText = parseFloat(ethers.formatEther(bal)).toFixed(3);
+  };
+
+  el('swapBtn').onclick = async () => {
+    if(!state.signer || !state.selected) return alert('Not ready');
+    try {
+        el('status').innerText = 'Building Tx...';
+        const router = new ethers.Contract(NAD_ROUTER, [
+            "function swapExactETHForTokens(uint amountOutMin, address[] calldata path, address to, uint deadline) external payable returns (uint[] memory amounts)"
+        ], state.signer);
+
+        const path = [WMON, state.selected.baseToken.address];
+        const val = ethers.parseEther(el('amtIn').value);
+        
+        const tx = await router.swapExactETHForTokens(0, path, state.account, Math.floor(Date.now()/1000)+600, {value:val});
+        el('status').innerText = 'Tx: ' + tx.hash;
+        el('status').style.color = '#22c55e';
+    } catch(e) {
+        el('status').innerText = e.reason || e.message;
+        el('status').style.color = 'red';
+    }
+  };
+
+  boot();
+  setInterval(boot, 30000);
+</script>
+</body>
+</html>
