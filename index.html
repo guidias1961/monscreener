@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>MonScreener • Mainnet Terminal</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
+
+  <style>
+    :root {
+      /* GMGN / BullX Professional Palette - Midnight Theme */
+      --bg: #0b0c0f;
+      --surface: #13141b;
+      --surface-hover: #1c1e26;
+      --border: #222430;
+      
+      --text-main: #e1e4e8;
+      --text-dim: #848995;
+      
+      --accent: #836EF9; /* Monad Purple */
+      --green: #2ebd85;
+      --red: #f6465d;
+      
+      --font-main: 'Inter', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * { box-sizing: border-box; outline: none; -webkit-font-smoothing: antialiased; }
+    
+    body {
+      margin: 0; background: var(--bg); color: var(--text-main);
+      font-family: var(--font-main); font-size: 12px; height: 100vh; overflow: hidden;
+    }
+
+    /* UTILS */
+    .mono { font-family: var(--font-mono); }
+    .green { color: var(--green); }
+    .red { color: var(--red); }
+    .dim { color: var(--text-dim); }
+    .flex-between { display: flex; align-items: center; justify-content: space-between; }
+    
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+
+    /* LAYOUT */
+    .app { display: grid; grid-template-rows: 48px 1fr; height: 100%; }
+    
+    /* HEADER */
+    header {
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      padding: 0 16px; gap: 16px; display: flex; align-items: center;
+    }
+    .brand { font-weight: 700; font-size: 14px; letter-spacing: -0.5px; display: flex; align-items: center; gap: 8px; }
+    .brand span { color: var(--accent); }
+    .status-dot { width: 8px; height: 8px; background: var(--green); border-radius: 50%; box-shadow: 0 0 8px var(--green); animation: pulse 2s infinite; }
+    @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+    
+    .search-wrap { flex: 1; max-width: 400px; position: relative; }
+    .search-input {
+      width: 100%; background: var(--bg); border: 1px solid var(--border);
+      color: #fff; padding: 6px 12px 6px 30px; border-radius: 4px;
+      font-family: var(--font-mono); font-size: 11px;
+      transition: border-color 0.2s;
+    }
+    .search-input:focus { border-color: var(--accent); }
+    .search-icon { position: absolute; left: 10px; top: 7px; color: var(--text-dim); font-size: 10px; }
+
+    .wallet-btn {
+      background: var(--accent); color: #fff; border: none; padding: 6px 16px;
+      border-radius: 4px; font-weight: 600; font-size: 11px; cursor: pointer;
+    }
+    .wallet-btn:hover { opacity: 0.9; }
+
+    /* MAIN CONTENT */
+    .main { display: grid; grid-template-columns: 240px 1fr 320px; overflow: hidden; }
+    
+    .panel { border-right: 1px solid var(--border); display: flex; flex-direction: column; background: var(--bg); }
+    .panel:last-child { border-right: none; border-left: 1px solid var(--border); background: var(--surface); }
+
+    .panel-header {
+      height: 36px; display: flex; align-items: center; padding: 0 12px;
+      border-bottom: 1px solid var(--border); font-size: 10px; font-weight: 600;
+      text-transform: uppercase; color: var(--text-dim); background: var(--surface);
+    }
+
+    /* FILTERS */
+    .filter-row { padding: 12px; border-bottom: 1px solid var(--border); }
+    .select-input { width: 100%; background: var(--bg); border: 1px solid var(--border); color: #fff; padding: 6px; border-radius: 4px; font-size: 11px; }
+    .kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .kpi-card { background: var(--surface); padding: 8px; border-radius: 4px; border: 1px solid var(--border); }
+    .kpi-val { font-size: 12px; font-weight: 700; color: #fff; }
+
+    /* TABLE */
+    .table-container { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
+    .table-header {
+      display: grid; grid-template-columns: 40px minmax(160px, 1.5fr) 100px 70px 70px 90px 90px 90px;
+      padding: 8px 12px; border-bottom: 1px solid var(--border);
+      font-size: 10px; color: var(--text-dim); font-weight: 600; background: var(--surface);
+      position: sticky; top: 0; z-index: 2;
+    }
+    .table-row {
+      display: grid; grid-template-columns: 40px minmax(160px, 1.5fr) 100px 70px 70px 90px 90px 90px;
+      padding: 0 12px; height: 42px; align-items: center; border-bottom: 1px solid var(--border);
+      cursor: pointer; transition: background 0.1s; font-size: 12px;
+    }
+    .table-row:hover { background: var(--surface-hover); }
+    .table-row.active { background: rgba(131, 110, 249, 0.08); border-left: 2px solid var(--accent); }
+    .pair-col { display: flex; align-items: center; gap: 10px; }
+    .token-icon { width: 24px; height: 24px; border-radius: 50%; background: #222; object-fit: cover; }
+    .badge { font-size: 9px; padding: 1px 4px; border-radius: 2px; font-weight: 700; }
+    .badge-nad { background: var(--accent); color: #fff; }
+    .badge-dex { background: #333; color: #888; border: 1px solid #444; }
+
+    /* RIGHT PANEL */
+    .trade-box { padding: 16px; border-bottom: 1px solid var(--border); }
+    .swap-ui { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 12px; }
+    .input-group { background: var(--surface); border: 1px solid #222; border-radius: 4px; display: flex; align-items: center; padding: 8px; margin-top: 4px; }
+    .input-field { background: transparent; border: none; color: #fff; font-size: 16px; width: 100%; font-family: var(--font-mono); }
+    .swap-btn { width: 100%; background: var(--green); color: #000; border: none; padding: 10px; border-radius: 4px; font-weight: 700; margin-top: 12px; cursor: pointer; }
+
+    .social-btn {
+      display: block; width: 100%; text-align: center; padding: 8px; 
+      background: #1da1f2; color: #fff; font-weight: 700; border-radius: 4px; margin-top: 8px;
+    }
+    .social-btn:hover { opacity: 0.9; }
+    
+    .loading-overlay { padding: 40px; text-align: center; color: var(--text-dim); }
+    .tr { text-align: right; justify-content: flex-end; }
+
+    /* Social Feed Fix */
+    .twitter-embed { flex: 1; overflow-y: auto; background: #000; padding: 0; }
+    iframe { border: none !important; }
+  </style>
+</head>
+<body>
+
+<div class="app">
+  <header>
+    <div class="brand">MON<span>SCREENER</span></div>
+    <div class="search-wrap">
+      <div class="search-icon">🔍</div>
+      <input type="text" id="searchIn" class="search-input" placeholder="Search tokens (Nad.fun, Monad)...">
+    </div>
+    <div style="flex:1"></div>
+    <div class="flex-between" style="gap:6px; font-size:11px; border:1px solid #333; padding:4px 8px; border-radius:4px; background:#000">
+      <div class="status-dot"></div>
+      <span>Monad Mainnet</span>
+    </div>
+    <button id="walletBtn" class="wallet-btn">Connect Wallet</button>
+  </header>
+
+  <div class="main">
+    <div class="panel">
+      <div class="panel-header">Screener</div>
+      <div class="filter-row">
+        <label style="font-size:10px; color:#888; margin-bottom:4px; display:block">Sort By</label>
+        <select id="sortBy" class="select-input">
+          <option value="created">🆕 Newest Created</option>
+          <option value="volume">🔥 24h Volume</option>
+          <option value="change_desc">🚀 Top Gainers</option>
+          <option value="change_asc">🔻 Top Losers</option>
+          <option value="liquidity">💧 Liquidity</option>
+        </select>
+      </div>
+      <div class="filter-row">
+        <label style="font-size:10px; color:#888; margin-bottom:4px; display:block">Overview</label>
+        <div class="kpi-grid">
+          <div class="kpi-card"><div class="kpi-val" id="stat-count">0</div><div style="font-size:9px; color:#666">PAIRS</div></div>
+          <div class="kpi-card"><div class="kpi-val" id="stat-vol">$0</div><div style="font-size:9px; color:#666">VOL 24H</div></div>
+        </div>
+      </div>
+      <div class="filter-row" style="margin-top:auto; border-top:1px solid var(--border); border-bottom:none">
+        <div style="font-size:10px; color:var(--text-dim);">
+          Network: <b>Mainnet (RC1)</b><br>
+          Factory: <span class="mono">0x6B5...FEB7F3</span><br>
+          <br>
+          <span class="green">● Aggregator Live</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header flex-between">
+        <span>Monad Token Feed</span>
+        <button onclick="boot()" style="cursor:pointer; background:none; border:none; color:var(--text-dim)">↻</button>
+      </div>
+      <div class="table-container">
+        <div class="table-header">
+          <div>#</div>
+          <div>Token</div>
+          <div class="tr">Price</div>
+          <div class="tr">5m</div>
+          <div class="tr">24h</div>
+          <div class="tr">Vol</div>
+          <div class="tr">Liq</div>
+          <div class="tr">Age</div>
+        </div>
+        <div id="pairList">
+          <div class="loading-overlay">Initializing Mainnet Scan...</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">Trade (Mainnet)</div>
+      <div class="trade-box">
+        <div class="swap-ui">
+          <div class="flex-between" style="font-size:10px; color:#888; margin-bottom:2px"><span>Pay</span> <span id="bal">Bal: 0.00</span></div>
+          <div class="input-group">
+            <input type="number" id="amtIn" class="input-field" value="1" placeholder="0.0">
+            <span style="font-weight:700; font-size:12px; color:#888">MON</span>
+          </div>
+          
+          <div style="text-align:center; font-size:10px; color:#444; margin:4px 0">⬇</div>
+
+          <div class="flex-between" style="font-size:10px; color:#888; margin-bottom:2px"><span>Receive</span></div>
+          <div class="input-group" style="border-color:var(--accent)">
+            <input type="text" id="amtOut" class="input-field" readonly placeholder="0.0">
+            <span id="targetTicker" style="font-weight:700; font-size:12px; color:var(--accent)">-</span>
+          </div>
+
+          <button id="swapBtn" class="swap-btn">Connect Wallet</button>
+          <div id="txStatus" style="margin-top:8px; font-size:10px; text-align:center; color:#666; height:12px"></div>
+        </div>
+      </div>
+
+      <div class="panel-header flex-between">
+        <span>Social Pulse</span>
+        <span style="font-size:9px; color:#666">@monad_xyz</span>
+      </div>
+      
+      <div class="twitter-embed">
+        <div style="padding:12px; border-bottom:1px solid #222; text-align:center">
+           <div style="font-size:10px; color:#888; margin-bottom:4px">Looking for "nad.fun" or "monad" posts?</div>
+           <a href="https://twitter.com/search?q=monad%20OR%20nad.fun&src=typed_query&f=live" target="_blank" class="social-btn">
+             OPEN LIVE SEARCH ↗
+           </a>
+        </div>
+        
+        <a class="twitter-timeline" 
+           data-theme="dark" 
+           data-noheader="true" 
+           data-nofooter="true" 
+           data-borders="false"
+           href="https://twitter.com/monad_xyz?ref_src=twsrc%5Etfw">
+           Loading Official Feed...
+        </a>
+        <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // --- CONFIG MAINNET ---
+  const CONFIG = {
+    // Standard RPC Guess for Mainnet
+    RPC: "https://rpc.monad.xyz", 
+    FACTORY: "0x6B5F564339DbAD6b780249827f2198a841FEB7F3",
+    ROUTER: "0x0B79d71AE99528D1dB24A4148b5f4F865cc2b137",
+    WMON: "0x3bd359C1119dA7Da1D913D1C4D2B7c461115433A"
+  };
+
+  // HELPERS
+  const fmtUSD = n => n ? '$' + Number(n).toLocaleString(undefined, {notation:"compact", maximumFractionDigits:2}) : '-';
+  const fmtPrice = n => n ? (n < 0.01 ? '$'+Number(n).toExponential(4) : '$'+Number(n).toFixed(4)) : '-';
+  const fmtPct = n => {
+    if(n==null) return '-';
+    return `<span class="${n>=0?'green':'red'} mono">${n>0?'+':''}${n.toFixed(2)}%</span>`;
+  }
+  const timeSince = ts => {
+    if(!ts) return '-';
+    const s = Math.floor((Date.now()-ts)/1000);
+    return s<60 ? s+'s' : s<3600 ? Math.floor(s/60)+'m' : s<86400 ? Math.floor(s/3600)+'h' : Math.floor(s/86400)+'d';
+  }
+
+  // STATE
+  let state = { pairs: [], selected: null, signer: null };
+  const el = id => document.getElementById(id);
+
+  // --- LOGIC ---
+  async function boot() {
+    el('pairList').innerHTML = '<div class="loading-overlay">Aggregating Mainnet Data...</div>';
+
+    // 1. DEXSCREENER AGGREGATION
+    // We search multiple terms to ensure we catch everything on Monad
+    const terms = ['monad', 'nad', 'wmon', 'nad.fun', CONFIG.FACTORY];
+    
+    try {
+        const promises = terms.map(t => fetch(`https://api.dexscreener.com/latest/dex/search?q=${encodeURIComponent(t)}`).then(r=>r.json()).catch(()=>({pairs:[]})));
+        const results = await Promise.all(promises);
+        
+        let allPairs = [];
+        results.forEach(r => { if(r.pairs) allPairs.push(...r.pairs); });
+
+        // Filter for Monad Chain
+        const unique = new Map();
+        allPairs.forEach(p => {
+            // Relaxed check: accepts 'monad' in chainId OR url
+            // Also accepts unknown chainId if URL contains monad
+            const valid = (p.chainId && p.chainId.toLowerCase().includes('monad')) || 
+                          (p.url && p.url.includes('monad'));
+            
+            if(valid) unique.set(p.pairAddress, p);
+        });
+
+        state.pairs = Array.from(unique.values());
+        
+        updateStats();
+        applySort();
+
+    } catch(e) {
+        el('pairList').innerHTML = `<div class="loading-overlay red">API Error: ${e.message}</div>`;
+    }
+  }
+
+  function updateStats() {
+    el('stat-count').innerText = state.pairs.length;
+    el('stat-vol').innerText = fmtUSD(state.pairs.reduce((a,b)=>a+(b.volume?.h24||0),0));
+  }
+
+  function applySort() {
+    const m = el('sortBy').value;
+    const list = [...state.pairs];
+    list.sort((a,b) => {
+        if(m==='volume') return (b.volume?.h24||0)-(a.volume?.h24||0);
+        if(m==='created') return (b.pairCreatedAt||0)-(a.pairCreatedAt||0);
+        if(m==='liquidity') return (b.liquidity?.usd||0)-(a.liquidity?.usd||0);
+        if(m==='change_desc') return (b.priceChange?.h24||0)-(a.priceChange?.h24||0);
+        return 0;
+    });
+    render(list);
+  }
+
+  function render(list) {
+    const c = el('pairList');
+    c.innerHTML = '';
+    
+    if(list.length === 0) {
+        c.innerHTML = '<div class="loading-overlay">No pairs found.<br>DexScreener might be indexing.</div>';
+        return;
+    }
+
+    list.forEach((p, i) => {
+        const row = document.createElement('div');
+        const isNad = p.baseToken.name.toLowerCase().includes('nad') || p.pairAddress.toLowerCase() === CONFIG.FACTORY.toLowerCase();
+        
+        row.className = 'table-row';
+        row.innerHTML = `
+            <div class="dim mono">${i+1}</div>
+            <div class="pair-col">
+                <img src="${p.info?.imageUrl||''}" class="token-icon" onerror="this.style.opacity=0.3">
+                <div style="display:flex; flex-direction:column; line-height:1.2">
+                    <div style="font-weight:700; color:#fff; display:flex; gap:6px; align-items:center">
+                        ${p.baseToken.symbol}
+                        <span class="badge ${isNad?'badge-nad':'badge-dex'}">${isNad?'NAD':'DEX'}</span>
+                    </div>
+                    <div class="mono" style="font-size:10px; color:#555">${p.pairAddress.slice(0,6)}...</div>
+                </div>
+            </div>
+            <div class="tr mono" style="color:#fff">${fmtPrice(p.priceUsd)}</div>
+            <div class="tr">${fmtPct(p.priceChange?.m5)}</div>
+            <div class="tr">${fmtPct(p.priceChange?.h24)}</div>
+            <div class="tr mono dim">${fmtUSD(p.volume?.h24)}</div>
+            <div class="tr mono dim">${fmtUSD(p.liquidity?.usd)}</div>
+            <div class="tr mono dim" style="font-size:10px">${timeSince(p.pairCreatedAt)}</div>
+        `;
+        row.onclick = () => select(p, row);
+        c.appendChild(row);
+    });
+  }
+
+  function select(p, div) {
+    document.querySelectorAll('.table-row').forEach(r => r.classList.remove('active'));
+    div.classList.add('active');
+    state.selected = p;
+    el('targetTicker').innerText = p.baseToken.symbol;
+    calc();
+  }
+
+  function calc() {
+    if(!state.selected) return;
+    const v = parseFloat(el('amtIn').value||0);
+    const p = parseFloat(state.selected.priceUsd||0);
+    // Simulating Mainnet Price (1 MON ~ $10.00 placeholder, adjust if needed)
+    const MON_PRICE = 10.00; 
+    if(p>0) el('amtOut').value = (v * MON_PRICE / p).toFixed(2);
+  }
+  el('amtIn').oninput = calc;
+
+  // --- WALLET ---
+  el('walletBtn').onclick = async () => {
+    if(!window.ethereum) return alert('Wallet not found');
+    const p = new ethers.BrowserProvider(window.ethereum);
+    await p.send("eth_requestAccounts", []);
+    state.signer = await p.getSigner();
+    const addr = await state.signer.getAddress();
+    
+    el('walletBtn').innerText = addr.slice(0,6)+'...';
+    el('swapBtn').innerText = 'SWAP';
+    el('swapBtn').style.background = 'var(--green)';
+    
+    const bal = await p.getBalance(addr);
+    el('bal').innerText = 'Bal: ' + parseFloat(ethers.formatEther(bal)).toFixed(3);
+  };
+
+  el('swapBtn').onclick = async () => {
+    if(!state.signer || !state.selected) return alert('Select Pair First');
+    try {
+        el('txStatus').innerText = 'Sign in Wallet...';
+        const r = new ethers.Contract(CONFIG.ROUTER, [
+            "function swapExactETHForTokens(uint amountOutMin, address[] calldata path, address to, uint deadline) external payable returns (uint[] memory amounts)"
+        ], state.signer);
+
+        const path = [CONFIG.WMON, state.selected.baseToken.address];
+        const val = ethers.parseEther(el('amtIn').value);
+
+        const tx = await r.swapExactETHForTokens(0, path, await state.signer.getAddress(), Math.floor(Date.now()/1000)+600, {value:val});
+        el('txStatus').innerText = 'Sent: ' + tx.hash.slice(0,10);
+        el('txStatus').style.color = 'var(--green)';
+    } catch(e) {
+        el('txStatus').innerText = e.reason || 'Tx Failed';
+        el('txStatus').style.color = 'var(--red)';
+    }
+  };
+
+  // Search filter
+  el('searchIn').addEventListener('keyup', (e)=>{
+      const q = e.target.value.toLowerCase();
+      const f = state.pairs.filter(p => p.baseToken.symbol.toLowerCase().includes(q) || p.pairAddress.toLowerCase().includes(q));
+      render(f);
+  });
+  el('sortBy').addEventListener('change', applySort);
+
+  boot();
+  setInterval(boot, 30000);
+
+</script>
+</body>
+</html>
