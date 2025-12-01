@@ -1,0 +1,184 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+:root {
+  --monad-purple: #836EF9;
+  --monad-purple-light: #A594FF;
+  --monad-purple-dark: #5B3FD9;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: #0D0D0F;
+  color: #FFFFFF;
+  font-family: 'Inter', system-ui, sans-serif;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #131316;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #3A3A45;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #836EF9;
+}
+
+/* Utility Classes */
+@layer utilities {
+  .text-gradient-monad {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-monad-purple to-monad-purple-light;
+  }
+
+  .border-gradient-monad {
+    border-image: linear-gradient(135deg, #836EF9 0%, #5B3FD9 100%) 1;
+  }
+
+  .glass-effect {
+    @apply backdrop-blur-md bg-dark-card/80;
+  }
+
+  .hover-glow {
+    @apply transition-all duration-300 hover:shadow-glow-purple;
+  }
+
+  .card-base {
+    @apply bg-dark-card border border-dark-border rounded-xl transition-all duration-200;
+  }
+
+  .card-hover {
+    @apply hover:bg-dark-card-hover hover:border-dark-border-light;
+  }
+
+  .btn-primary {
+    @apply bg-gradient-monad text-white font-medium px-4 py-2 rounded-lg
+           hover:shadow-glow-purple transition-all duration-200
+           active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-secondary {
+    @apply bg-dark-bg-tertiary text-text-secondary border border-dark-border
+           font-medium px-4 py-2 rounded-lg hover:text-white hover:border-monad-purple/50
+           transition-all duration-200 active:scale-[0.98];
+  }
+
+  .input-base {
+    @apply w-full bg-dark-bg-secondary border border-dark-border rounded-lg
+           px-4 py-3 text-white placeholder-text-muted
+           focus:outline-none focus:border-monad-purple/50 focus:ring-1 focus:ring-monad-purple/20
+           transition-all duration-200;
+  }
+
+  .table-row {
+    @apply border-b border-dark-border hover:bg-dark-bg-tertiary/50 transition-colors;
+  }
+
+  .badge {
+    @apply inline-flex items-center px-2 py-0.5 rounded text-xs font-medium;
+  }
+
+  .badge-success {
+    @apply badge bg-status-success-bg text-status-success;
+  }
+
+  .badge-error {
+    @apply badge bg-status-error-bg text-status-error;
+  }
+
+  .badge-warning {
+    @apply badge bg-status-warning-bg text-status-warning;
+  }
+
+  .skeleton {
+    @apply animate-pulse bg-dark-bg-tertiary rounded;
+  }
+}
+
+/* Table Styles */
+.data-table {
+  @apply w-full text-sm;
+}
+
+.data-table thead {
+  @apply border-b border-dark-border;
+}
+
+.data-table th {
+  @apply px-4 py-3 text-left text-text-muted font-medium uppercase tracking-wider text-xs;
+}
+
+.data-table td {
+  @apply px-4 py-4;
+}
+
+.data-table tbody tr {
+  @apply table-row;
+}
+
+/* Animation Classes */
+.animate-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.slide-in {
+  animation: slideUp 0.3s ease-out;
+}
+
+/* Price Change Colors */
+.price-up {
+  @apply text-status-success;
+}
+
+.price-down {
+  @apply text-status-error;
+}
+
+/* Number formatting */
+.mono-nums {
+  font-feature-settings: 'tnum' on, 'lnum' on;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* ConnectKit Overrides */
+[data-rk] {
+  --ck-font-family: 'Inter', system-ui, sans-serif;
+  --ck-border-radius: 12px;
+  --ck-overlay-background: rgba(0, 0, 0, 0.8);
+  --ck-body-background: #16161A;
+  --ck-body-background-secondary: #1A1A1F;
+  --ck-body-background-tertiary: #131316;
+  --ck-body-color: #FFFFFF;
+  --ck-body-color-muted: #A1A1AA;
+  --ck-body-color-muted-hover: #FFFFFF;
+  --ck-primary-button-background: #836EF9;
+  --ck-primary-button-hover-background: #5B3FD9;
+  --ck-primary-button-border-radius: 8px;
+  --ck-secondary-button-background: #1A1A1F;
+  --ck-secondary-button-border-radius: 8px;
+  --ck-focus-color: #836EF9;
+  --ck-modal-box-shadow: 0 0 40px rgba(131, 110, 249, 0.2);
+}
